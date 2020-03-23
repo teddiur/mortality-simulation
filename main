@@ -1,0 +1,146 @@
+import pygame
+import random
+import math
+
+class Particle(object):
+    """Atributes: position (x, y) -> int
+    size -> int or float
+    color -> tuple, default (0, 0, 255)
+    thickness -> int, default 1
+    speed -> int or float
+    angle -> int or float
+    """
+    color = {'ok': (0,0,255), 'ill': (255,0,0), 'recovered': (0,255,0)}
+    def __init__(self, x, y, size, state='ok'):
+        self.x = x
+        self.y = y
+        self.size = size
+        self.color = Particle.color[state]
+        self.speed = 0.1
+        self.angle = 0
+        self.state = state
+
+    def update_color(self, state):
+        self.state = state
+        self.color = Particle.color[state]
+
+    def display(self):
+        #creates a circle with its color, position, size and thickness
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size, 0)
+    def move(self):
+        self.old_x = self.x
+        self.old_y = self.y
+        self.x += math.cos(self.angle) * self.speed
+        self.y += math.sin(self.angle) * self.speed
+
+    def bounce(self):
+        #right boundary
+        if self.x > WIDTH - self.size:
+            self.x = 2 * (WIDTH - self.size) - self.x
+            dy = self.y - self.old_y
+            dx = self.x - (WIDTH - self.size)
+            self.angle = math.atan2(dy, dx)
+        #left boundary
+        elif self.x < self.size:
+            self.x = 2 * self.size - self.x
+            dy = self.y - self.old_y
+            dx = self.x - self.size
+            self.angle = math.atan2(dy, dx)
+            #bottom boundary
+        elif self.y > HEIGTH - self.size:
+            self.y = 2 * (HEIGTH - self.size) - self.y
+            dy = self.y - (HEIGTH - self.size)
+            dx = self.x - self.old_x
+            self.angle = math.atan2(dy, dx)
+        #top boundary
+        elif self.y < self.size:
+            self.y = 2 * self.size - self.y
+            dy = self.y - self.size
+            dx = self.x - self.old_x
+            self.angle = math.atan2(dy, dx)
+
+    def collide(self, p):
+        dx = self.x - p.x
+        dy = self.y - p.y
+        distance = math.hypot(dx, dy)
+        # def offseting(self, p, tangent):
+        #     distance = self.size + p.size
+        #     p.x = self.x + math.cos(tangent) * distance
+        #     p.y = self.y + math.sin(tangent) * distance
+
+        if distance <= self.size + p.size:
+            tangent = math.atan2(dy, dx)
+
+            #offsetting particles so they collide more realisticly
+            # offseting(self, p, tangent)
+
+            #changing the angle of particles after collision
+            self.angle = 2 * tangent - self.angle
+            p.angle = 2 * tangent - p.angle
+
+            #exchanging speed after collision
+            (self.speed, p.speed) = (p.speed, self.speed)
+            (self.angle, p.angle) = (p.angle, self.angle)
+
+            self.x += math.sin(tangent)
+            self.y -= math.cos(tangent)
+            p.x -= math.sin(tangent)
+            p.y += math.cos(tangent)
+            if self.state == 'ill' or p.state == 'ill':
+                self.update_color('ill')
+                p.update_color('ill')
+
+def addVectors(angle1, length1, angle2, length2):
+    x = math.sin(angle1) * length1 + math.sin(angle2) * length2
+    y = math.cos(angle1) * length1 + math.cos(angle2) * length2
+
+    angle = 0.5 * math.pi - math.atan2(y, x)
+    length = math.hypot(x, y)
+
+    return (angle, length)
+
+(WIDTH, HEIGTH) = (400, 400)
+BG_COLOR = (255, 255, 255)
+
+#creates a Surface and color it
+screen = pygame.display.set_mode((WIDTH, HEIGTH))
+
+#creates the particles in random locations
+number_particles = 160
+particles = []
+for i in range(number_particles):
+    size = random.randint(10, 20)
+    x = random.randint(size, WIDTH - size)
+    y = random.randint(size, HEIGTH - size)
+
+    particle = Particle(x, y, 7)
+    particle.speed = random.uniform(0.1, 0.3)
+    particle.angle = random.uniform(0, math.pi*2)
+
+    particles.append(particle)
+    if i == number_particles-1:
+        particles[-1].update_color('ill')
+
+#set a name
+pygame.display.set_caption('Tutorial 1')
+
+#makes so the program runs indefinitely but quits when it's asked to close
+running = True
+while running:
+    #display the particles
+    screen.fill(BG_COLOR)
+
+    #quits
+    for event in pygame.event.get():
+        pygame.display.flip()
+        if event.type == pygame.QUIT:
+            running = False
+
+    for i, particle in enumerate(particles):
+        particle.move()
+        particle.bounce()
+        for particle2 in particles[i+1:]:
+            particle.collide(particle2)
+        particle.display()
+
+    pygame.display.flip()
