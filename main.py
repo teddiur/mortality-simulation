@@ -27,6 +27,7 @@ class Particle(object):
     def display(self):
         #creates a circle with its color, position, size and thickness
         pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size, 0)
+        
     def move(self):
         self.old_x = self.x
         self.old_y = self.y
@@ -46,7 +47,7 @@ class Particle(object):
             dy = self.y - self.old_y
             dx = self.x - self.size
             self.angle = math.atan2(dy, dx)
-            #bottom boundary
+        #bottom boundary
         elif self.y > HEIGTH - self.size:
             self.y = 2 * (HEIGTH - self.size) - self.y
             dy = self.y - (HEIGTH - self.size)
@@ -63,22 +64,15 @@ class Particle(object):
         dx = self.x - p.x
         dy = self.y - p.y
         distance = math.hypot(dx, dy)
-        # def offseting(self, p, tangent):
-        #     distance = self.size + p.size
-        #     p.x = self.x + math.cos(tangent) * distance
-        #     p.y = self.y + math.sin(tangent) * distance
-
+        
         if distance <= self.size + p.size:
             tangent = math.atan2(dy, dx)
-
-            #offsetting particles so they collide more realisticly
-            # offseting(self, p, tangent)
 
             #changing the angle of particles after collision
             self.angle = 2 * tangent - self.angle
             p.angle = 2 * tangent - p.angle
 
-            #exchanging speed after collision
+            #exchanging speed/angle after collision
             (self.speed, p.speed) = (p.speed, self.speed)
             (self.angle, p.angle) = (p.angle, self.angle)
 
@@ -86,18 +80,11 @@ class Particle(object):
             self.y -= math.cos(tangent)
             p.x -= math.sin(tangent)
             p.y += math.cos(tangent)
+            
+            #contamination
             if self.state == 'ill' or p.state == 'ill':
                 self.update_color('ill')
                 p.update_color('ill')
-
-def addVectors(angle1, length1, angle2, length2):
-    x = math.sin(angle1) * length1 + math.sin(angle2) * length2
-    y = math.cos(angle1) * length1 + math.cos(angle2) * length2
-
-    angle = 0.5 * math.pi - math.atan2(y, x)
-    length = math.hypot(x, y)
-
-    return (angle, length)
 
 (WIDTH, HEIGTH) = (400, 400)
 BG_COLOR = (255, 255, 255)
@@ -105,9 +92,10 @@ BG_COLOR = (255, 255, 255)
 #creates a Surface and color it
 screen = pygame.display.set_mode((WIDTH, HEIGTH))
 
-#creates the particles in random locations
 number_particles = 160
 particles = []
+
+#creates the particles in random locations and infects one of them
 for i in range(number_particles):
     size = random.randint(10, 20)
     x = random.randint(size, WIDTH - size)
@@ -132,10 +120,10 @@ while running:
 
     #quits
     for event in pygame.event.get():
-        pygame.display.flip()
         if event.type == pygame.QUIT:
             running = False
-
+            
+    #the most time consuming part 
     for i, particle in enumerate(particles):
         particle.move()
         particle.bounce()
