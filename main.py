@@ -143,7 +143,6 @@ while running:
     #the most time consuming part 
     for i, particle in enumerate(particles):
         if particle.state == 'dead':
-            particle.display()
             continue
         particle.move()
         particle.bounce()
