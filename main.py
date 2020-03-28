@@ -1,7 +1,36 @@
 import pygame
 import random
 import math
+import numpy
 
+class Vector(object):
+    def __init__(self, x, y):
+        self.vector = [x, y]
+
+    def __add__(self, other):
+        ans = []
+        for i in range(len(self.vector)):
+            ans.append(self.vector[i]+other.vector[i])
+        return ans
+
+    def __sub__(self, other):
+        ans = []
+        for i in range(len(self.vector)):
+            ans.append(self.vector[i]-other.vector[i])
+        return ans
+        
+    def dot(self, other):
+        ans = 0
+        for i in range(len(self.vector)):
+            ans += self.vector[i]*other.vector[i]
+        return ans
+
+    def __str__(self):
+        ans = '['
+        for i in (self.vector):
+            ans += f'{i}, '
+        ans = ans[:-2] + ']'
+        return ans
 class Particle(object):
     """Atributes: position (x, y) -> int
     size -> int or float
@@ -150,5 +179,4 @@ while running:
             particle.collide(particle2)
         particle.timer()
         particle.display()
-
     pygame.display.flip()
