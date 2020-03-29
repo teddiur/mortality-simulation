@@ -4,21 +4,39 @@ import math
 import numpy
 
 class Vector(object):
-    def __init__(self, x, y):
-        self.vector = [x, y]
+    def __init__(self, x1, x2):
+        self.vector = [x1, x2]
+        self._x = x1
+        self._y = x2
+
+    @property
+    def x(self):
+        return self._x
+    
+    @property
+    def y(self):
+        return self._y
+
+    @x.setter
+    def x(self, x):
+        self._x = x
+        self.vector[0] = x
+
+    @y.setter
+    def y(self, y):
+        self._y = y
+        self.vector[1] = y
 
     def __add__(self, other):
-        ans = []
-        for i in range(len(self.vector)):
-            ans.append(self.vector[i]+other.vector[i])
-        return ans
+        x = self.x + other.x
+        y = self.y + other.y
+        return Vector(x, y)
 
     def __sub__(self, other):
-        ans = []
-        for i in range(len(self.vector)):
-            ans.append(self.vector[i]-other.vector[i])
-        return ans
-        
+        x = self.x - other.x
+        y = self.y - other.y
+        return Vector(x, y)
+
     def dot(self, other):
         ans = 0
         for i in range(len(self.vector)):
@@ -31,22 +49,30 @@ class Vector(object):
             ans += f'{i}, '
         ans = ans[:-2] + ']'
         return ans
+
+    def distance(self, other):
+        dist = self - other
+        ans = math.sqrt(dist.x**2 + dist.y**2)
+        return ans
+    
+    def mult(self, scalar):
+        x = self.x * scalar
+        y = self.y * scalar
+        return Vector(x, y)
+
+
 class Particle(object):
-    """Atributes: position (x, y) -> int
-    size -> int or float
-    color -> tuple, default (0, 0, 255)
+    """Atributes: position (x, y) -> Vector
+    size -> int, default 7
     thickness -> int, default 1
-    speed -> int or float
-    angle -> int or float
+    speed (vx, vy)-> Vector 
     """
     color = {'ok': (0,0,255), 'ill': (255,0,0), 'recovered': (0,255,0), 'dead': (0, 0, 0)}
-    def __init__(self, x, y, size, state='ok'):
-        self.x = x
-        self.y = y
+    def __init__(self, position, speed, size=7, state='ok'):
+        self.pos = position
+        self.speed = speed
         self.size = size
         self.color = Particle.color[state]
-        self.speed = 0.1
-        self.angle = 0
         self.state = state
 
     def update_color(self, state):
@@ -67,74 +93,79 @@ class Particle(object):
     def death(self):
         if self.time_infected > TIME_TILL_DEAD:
             self.update_color('dead')
-            self.speed = 0
+            self.speed.x = self.speed.y = 0
 
     def display(self):
         #creates a circle with its color, position, size and thickness
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size, 0)
+        pygame.draw.circle(screen, self.color, (int(self.pos.x), int(self.pos.y)), self.size, 0)
         
     def move(self):
-        self.old_x = self.x
-        self.old_y = self.y
-        self.x += math.cos(self.angle) * self.speed
-        self.y += math.sin(self.angle) * self.speed
+        self.pos = self.pos + self.speed
 
     def bounce(self):
         #right boundary
-        if self.x > WIDTH - self.size:
-            self.x = 2 * (WIDTH - self.size) - self.x
-            dy = self.y - self.old_y
-            dx = self.x - (WIDTH - self.size)
-            self.angle = math.atan2(dy, dx)
+        if self.pos.x > WIDTH - self.size:
+            self.speed.x *= -1
+            self.pos.x = 2 * WIDTH - self.pos.x
         #left boundary
-        elif self.x < self.size:
-            self.x = 2 * self.size - self.x
-            dy = self.y - self.old_y
-            dx = self.x - self.size
-            self.angle = math.atan2(dy, dx)
+        elif self.pos.x < self.size:
+            self.speed.x *= -1
+            self.pos.x = 2 * self.size - self.pos.x
         #bottom boundary
-        elif self.y > HEIGTH - self.size:
-            self.y = 2 * (HEIGTH - self.size) - self.y
-            dy = self.y - (HEIGTH - self.size)
-            dx = self.x - self.old_x
-            self.angle = math.atan2(dy, dx)
+        if self.pos.y > HEIGTH - self.size:
+            self.speed.y *= -1
+            self.pos.y = 2 * HEIGTH - self.pos.y
         #top boundary
-        elif self.y < self.size:
-            self.y = 2 * self.size - self.y
-            dy = self.y - self.size
-            dx = self.x - self.old_x
-            self.angle = math.atan2(dy, dx)
-
+        elif self.pos.y < self.size:
+            self.speed.y *= -1
+            self.pos.y = 2 * self.size - self.pos.y
+            
     def collide(self, p):        
-        dx = self.x - p.x
-        dy = self.y - p.y
-        distance = math.hypot(dx, dy)
+        distance = self.pos.distance(p.pos)
                 
         if distance <= self.size + p.size:
-            tangent = math.atan2(dy, dx)
+            pos11 = self.pos
+            # pos12 = self.pos
+            vel11 = self.speed
+            # vel12 = self.speed
+            pos_dif = self.pos - p.pos
+            vel_dif = self.speed - p.speed
 
-            #changing the angle of particles after collision
-            self.angle = 2 * tangent - self.angle
-            p.angle = 2 * tangent - p.angle
+            factor = vel_dif.dot(pos_dif)
+            factor /= pos_dif.distance(ORIGIN) ** 2
+            self.speed = self.speed - pos_dif.mult(factor)
 
-            #exchanging speed/angle after collision
-            if p.state != 'dead':
-                (self.speed, p.speed) = (p.speed, self.speed)
-                (self.angle, p.angle) = (p.angle, self.angle)
-                p.x -= math.sin(tangent)
-                p.y += math.cos(tangent)
-                self.x += math.sin(tangent)
-                self.y -= math.cos(tangent)
+            pos_dif = p.pos - pos11
+            vel_dif = p.speed - vel11
+
+            factor = pos_dif.dot(vel_dif)
+            factor /= pos_dif.distance(ORIGIN) ** 2
+            p.vel = p.speed - pos_dif.mult(factor)
+            
+            # tangent = math.atan2(dy, dx)
+
+            # #changing the angle of particles after collision
+            # self.angle = 2 * tangent - self.angle
+            # p.angle = 2 * tangent - p.angle
+
+            # #exchanging speed/angle after collision
+            # (self.speed, p.speed) = (p.speed, self.speed)
+            # (self.angle, p.angle) = (p.angle, self.angle)
+            # p.x -= math.sin(tangent)
+            # p.y += math.cos(tangent)
+            # self.x += math.sin(tangent)
+            # self.y -= math.cos(tangent)
             
             #contamination
             if all([(self.state == 'ill' or p.state == 'ill'), (self.state != 'dead' and p.state != 'dead')]):
                 self.update_color('ill')
                 p.update_color('ill')
 
+
 (WIDTH, HEIGTH) = (400, 400)
 BG_COLOR = (255, 255, 255)
 TIME_TILL_DEAD = 3000
-
+ORIGIN = Vector(0, 0)
 #creates a Surface and color it
 screen = pygame.display.set_mode((WIDTH, HEIGTH))
 
@@ -143,15 +174,19 @@ particles = []
 
 #creates the particles in random locations and infects one of them
 for i in range(number_particles):
-    size = random.randint(10, 20)
+    #a good pratice would be checking if there's already a Particle in this (x,y)
+    size = 7
     x = random.randint(size, WIDTH - size)
     y = random.randint(size, HEIGTH - size)
+    vx = random.uniform(0, 0.3)
+    vy = math.sqrt(0.3**2-vx**2)
 
-    particle = Particle(x, y, 7)
-    particle.speed = random.uniform(0.1, 0.3)
-    particle.angle = random.uniform(0, math.pi*2)
-
+    pos = Vector(x, y)
+    speed = Vector(vx, vy)
+    
+    particle = Particle(pos, speed)
     particles.append(particle)
+    
     if i == number_particles-1:
         particles[-1].update_color('ill')
 
@@ -172,6 +207,7 @@ while running:
     #the most time consuming part 
     for i, particle in enumerate(particles):
         if particle.state == 'dead':
+            particle.display()
             continue
         particle.move()
         particle.bounce()
