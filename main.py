@@ -99,10 +99,10 @@ class Particle(object):
         #creates a circle with its color, position, size and thickness
         pygame.draw.circle(screen, self.color, (int(self.pos.x), int(self.pos.y)), self.size, 0)
         
-    def move(self):
-        self.pos = self.pos + self.speed
-
-    def bounce(self):
+    def update(self):
+        if self.state == 'dead':
+            return
+        
         #right boundary
         if self.pos.x > WIDTH - self.size:
             self.speed.x *= -1
@@ -119,47 +119,52 @@ class Particle(object):
         elif self.pos.y < self.size:
             self.speed.y *= -1
             self.pos.y = 2 * self.size - self.pos.y
-            
-    def collide(self, p):        
-        distance = self.pos.distance(p.pos)
-                
-        if distance <= self.size + p.size:
-            pos11 = self.pos
-            # pos12 = self.pos
-            vel11 = self.speed
-            # vel12 = self.speed
-            pos_dif = self.pos - p.pos
-            vel_dif = self.speed - p.speed
+        self.pos = self.pos + self.speed
 
-            factor = vel_dif.dot(pos_dif)
-            factor /= pos_dif.distance(ORIGIN) ** 2
-            self.speed = self.speed - pos_dif.mult(factor)
+    def overlaps(self, other):
+        distance = self.pos.distance(other.pos)
+        return distance < self.size + other.size
 
-            pos_dif = p.pos - pos11
-            vel_dif = p.speed - vel11
+    def colision(self, other):        
+        pos11 = self.pos
+        # pos12 = self.pos
+        vel11 = self.speed
+        # vel12 = self.speed
+        pos_dif = self.pos - other.pos
+        vel_dif = self.speed - other.speed
 
-            factor = pos_dif.dot(vel_dif)
-            factor /= pos_dif.distance(ORIGIN) ** 2
-            p.vel = p.speed - pos_dif.mult(factor)
-            
-            # tangent = math.atan2(dy, dx)
+        factor = vel_dif.dot(pos_dif)
+        factor /= pos_dif.distance(ORIGIN) ** 2
+        self.speed = self.speed - pos_dif.mult(factor)
 
-            # #changing the angle of particles after collision
-            # self.angle = 2 * tangent - self.angle
-            # p.angle = 2 * tangent - p.angle
+        pos_dif = other.pos - pos11
+        vel_dif = other.speed - vel11
 
-            # #exchanging speed/angle after collision
-            # (self.speed, p.speed) = (p.speed, self.speed)
-            # (self.angle, p.angle) = (p.angle, self.angle)
-            # p.x -= math.sin(tangent)
-            # p.y += math.cos(tangent)
-            # self.x += math.sin(tangent)
-            # self.y -= math.cos(tangent)
-            
-            #contamination
-            if all([(self.state == 'ill' or p.state == 'ill'), (self.state != 'dead' and p.state != 'dead')]):
-                self.update_color('ill')
-                p.update_color('ill')
+        factor = pos_dif.dot(vel_dif)
+        factor /= pos_dif.distance(ORIGIN) ** 2
+        other.vel = other.speed - pos_dif.mult(factor)
+        
+        while self.overlaps(other):
+            self.update()
+            other.update()
+        # tangent = math.atan2(dy, dx)
+
+        # #changing the angle of particles after collision
+        # self.angle = 2 * tangent - self.angle
+        # p.angle = 2 * tangent - p.angle
+
+        # #exchanging speed/angle after collision
+        # (self.speed, p.speed) = (p.speed, self.speed)
+        # (self.angle, p.angle) = (p.angle, self.angle)
+        # p.x -= math.sin(tangent)
+        # p.y += math.cos(tangent)
+        # self.x += math.sin(tangent)
+        # self.y -= math.cos(tangent)
+        
+        #contamination
+        if all([(self.state == 'ill' or other.state == 'ill'), (self.state != 'dead' and other.state != 'dead')]):
+            self.update_color('ill')
+            other.update_color('ill')
 
 
 (WIDTH, HEIGTH) = (400, 400)
@@ -193,26 +198,35 @@ for i in range(number_particles):
 #set a name
 pygame.display.set_caption('Tutorial 1')
 
+# save = input('do you wanna save frames as .jpeg files? 0 - no; 1 - yes')
 #makes so the program runs indefinitely but quits when it's asked to close
 running = True
-while running:
+j = 0
+# while running:
+while j < 50:
     #display the particles
     screen.fill(BG_COLOR)
 
     #quits
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
-            
+    #         # running = False
+            j = 110
+
     #the most time consuming part 
     for i, particle in enumerate(particles):
         if particle.state == 'dead':
             particle.display()
             continue
-        particle.move()
-        particle.bounce()
         for particle2 in particles[i+1:]:
-            particle.collide(particle2)
+            if particle.overlaps(particle2):
+                particle.colision(particle2)
+        particle.update()
         particle.timer()
         particle.display()
-    pygame.display.flip()
+    
+    # pygame.display.flip()
+    
+    name = 'simulation' + '0'*(10-len(str(j))) + str(j) + '.jpeg'
+    pygame.image.save(screen, name)
+    j += 1
