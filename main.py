@@ -1,7 +1,8 @@
 import pygame
 import random
 import math
-import numpy
+import numpy as np
+import os
 
 class Vector(object):
     def __init__(self, x1, x2):
@@ -104,21 +105,21 @@ class Particle(object):
             return
         
         #right boundary
-        if self.pos.x > WIDTH - self.size:
+        if self.pos.x + self.size > simulation_x1:
             self.speed.x *= -1
-            self.pos.x = 2 * WIDTH - self.pos.x
+            self.pos.x = 2 * simulation_x1 - self.pos.x
         #left boundary
-        elif self.pos.x < self.size:
+        elif self.pos.x - self.size < simulation_x0:
             self.speed.x *= -1
-            self.pos.x = 2 * self.size - self.pos.x
+            self.pos.x = simulation_x0 + self.size - self.pos.x
         #bottom boundary
-        if self.pos.y > HEIGTH - self.size:
+        if self.pos.y + self.size > simulation_y1:
             self.speed.y *= -1
-            self.pos.y = 2 * HEIGTH - self.pos.y
+            self.pos.y = 2 * simulation_y1 - self.pos.y
         #top boundary
-        elif self.pos.y < self.size:
+        elif self.pos.y - self.size < simulation_y0:
             self.speed.y *= -1
-            self.pos.y = 2 * self.size - self.pos.y
+            self.pos.y = simulation_y0 + self.size - self.pos.y
         self.pos = self.pos + self.speed
 
     def overlaps(self, other):
@@ -147,32 +148,31 @@ class Particle(object):
         while self.overlaps(other):
             self.update()
             other.update()
-        # tangent = math.atan2(dy, dx)
-
-        # #changing the angle of particles after collision
-        # self.angle = 2 * tangent - self.angle
-        # p.angle = 2 * tangent - p.angle
-
-        # #exchanging speed/angle after collision
-        # (self.speed, p.speed) = (p.speed, self.speed)
-        # (self.angle, p.angle) = (p.angle, self.angle)
-        # p.x -= math.sin(tangent)
-        # p.y += math.cos(tangent)
-        # self.x += math.sin(tangent)
-        # self.y -= math.cos(tangent)
-        
+                
         #contamination
         if all([(self.state == 'ill' or other.state == 'ill'), (self.state != 'dead' and other.state != 'dead')]):
             self.update_color('ill')
             other.update_color('ill')
 
 
-(WIDTH, HEIGTH) = (400, 400)
+def count(particles):
+    dict = {}
+    for element in particles:
+        dict[element.state] = dict.get(element.state, 0) + 1
+    return [dict.get('ok', 0), dict.get('ill', 0), dict.get('recovered', 0), dict.get('dead', 0)]
+
+(window_width, window_heigth) = (615, 815)
+(width_simulation, heigth_simulation) = (600, 600)
+simulation_x0 = 7
+simulation_x1 = simulation_x0 + width_simulation
+simulation_y0 = 207
+simulation_y1 = simulation_y0 + heigth_simulation
 BG_COLOR = (255, 255, 255)
 TIME_TILL_DEAD = 3000
-ORIGIN = Vector(0, 0)
+ORIGIN = Vector(simulation_x0, simulation_y0)
+
 #creates a Surface and color it
-screen = pygame.display.set_mode((WIDTH, HEIGTH))
+screen = pygame.display.set_mode((window_width, window_heigth))
 
 number_particles = 20
 particles = []
@@ -181,10 +181,10 @@ particles = []
 for i in range(number_particles):
     #a good pratice would be checking if there's already a Particle in this (x,y)
     size = 7
-    x = random.randint(size, WIDTH - size)
-    y = random.randint(size, HEIGTH - size)
+    x = random.randint(simulation_x0 + size, simulation_x1 - size)
+    y = random.randint(simulation_y0 + size, simulation_y1 - size)
     vx = random.uniform(0, 0.3)
-    vy = math.sqrt(0.3**2-vx**2)
+    vy = math.sqrt(0.3**2-vx**2)*(-1)**x
 
     pos = Vector(x, y)
     speed = Vector(vx, vy)
@@ -196,23 +196,25 @@ for i in range(number_particles):
         particles[-1].update_color('ill')
 
 #set a name
-pygame.display.set_caption('Tutorial 1')
+pygame.display.set_caption('Infection Simulation')
 
-# save = input('do you wanna save frames as .jpeg files? 0 - no; 1 - yes')
+
 #makes so the program runs indefinitely but quits when it's asked to close
-running = True
+limit = 1*1
 j = 0
+#counter: time, suscetible, infectious, recovered, dead
+counter = np.array([j] + count(particles))
 # while running:
-while j < 50:
+while j < limit:
     #display the particles
     screen.fill(BG_COLOR)
 
     #quits
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-    #         # running = False
-            j = 110
+            j = limit + 1
 
+    pygame.draw.rect(screen, (0,0,0), (simulation_x0, simulation_y0, width_simulation, heigth_simulation), 1)
     #the most time consuming part 
     for i, particle in enumerate(particles):
         if particle.state == 'dead':
@@ -224,9 +226,16 @@ while j < 50:
         particle.update()
         particle.timer()
         particle.display()
-    
     # pygame.display.flip()
-    
+    counter = np.append(counter, [j] + count(particles), axis = 0)
+    if j == 0:
+        counter = np.reshape(counter, (2,5))
+    print(counter)
+
     name = 'simulation' + '0'*(10-len(str(j))) + str(j) + '.jpeg'
     pygame.image.save(screen, name)
     j += 1
+
+# print('simulation done')
+# os.system('python3 gif_maker.py')
+# print('done')
