@@ -1,5 +1,5 @@
 # mortality-simulation
-a simulation similar to the Washington Post one but with mortability
+a simulation similar to the Washington Post one but with mortality
 
 TO DO LIST
 1)
