@@ -2,7 +2,6 @@ import pygame
 import random
 import math
 
-#oh boy
 class Particle(object):
     """Atributes: position (x, y) -> int
     size -> int or float
